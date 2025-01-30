@@ -36,10 +36,13 @@ RESPONSES = {
 async def cmd_start(message: types.Message):
     await message.answer("Привіт! Вибери питання:", reply_markup=keyboard)
 #Картинка розклад
-@bot.message_handler(commands=['Розклад'])
-def send_schedule(message):
-    with open("schedule.jpg", "rb") as photo:
-        bot.send_photo(message.chat.id, photo)
+@dp.message(F.text == "Розклад")
+async def send_schedule(message: types.Message):
+    try:
+        with open("schedule.jpg", "rb") as photo:
+            await bot.send_photo(message.chat.id, photo)
+    except FileNotFoundError:
+        await message.answer("Файл з розкладом не знайдено!")
 # Обробник натискання кнопок
 @dp.message()
 async def handle_buttons(message: types.Message):
