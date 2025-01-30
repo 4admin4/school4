@@ -14,25 +14,34 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Створюємо клавіатуру з кнопкою "Старт"
+#Кнопки
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🚀 Старт")]
+        [KeyboardButton(text="Привіт"), KeyboardButton(text="Як справи?")],
+        [KeyboardButton(text="Що ти вмієш?"), KeyboardButton(text="Школа")]
     ],
-    resize_keyboard=True  # Робимо кнопку компактною
+    resize_keyboard=True  # Робимо кнопки компактними
 )
+
+# Список відповідей
+RESPONSES = {
+    "Привіт": "Привіт! Як справи? 😊",
+    "Як справи?": "Все чудово! А в тебе?",
+    "Що ти вмієш?": "Я можу відповідати на повідомлення! 🔥",
+    "Школа": "Навчання — це круто! 📚"
+}
 
 # Обробник команди /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Привіт! Натисни кнопку \"Старт\" 👇", reply_markup=keyboard)
+    await message.answer("Привіт! Вибери питання:", reply_markup=keyboard)
 
-# Обробник натискання кнопки "Старт"
+# Обробник натискання кнопок
 @dp.message()
-async def button_handler(message: types.Message):
-    if message.text == "🚀 Старт":
-        await message.answer("Бот запущено! ✅")
-
+async def handle_buttons(message: types.Message):
+    text = message.text.strip()  # Видаляємо зайві пробіли
+    response = RESPONSES.get(text, "Я не знаю, що відповісти... 😅")
+    await message.answer(response)
 # Головна функція для запуску бота
 async def main():
     await dp.start_polling(bot)
