@@ -14,7 +14,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 #Кнопки
-keyboard = ReplyKeyboardMarkup(
+main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Привіт"), KeyboardButton(text="Як справи?")],
         [KeyboardButton(text="Розклад"), KeyboardButton(text="Школа")]
@@ -50,7 +50,7 @@ RESPONSES = {
 # Обробник команди /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Привіт! Вибери питання:", reply_markup=keyboard)
+    await message.answer("Привіт! Вибери питання:", reply_markup=main_keyboard)
 
 
 #Картинка розклад
