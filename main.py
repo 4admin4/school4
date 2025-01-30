@@ -3,37 +3,35 @@ import asyncio
 import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # Встав свій токен від BotFather
 TOKEN = "7620525697:AAFmUw8Dco4lt2PhWgfA22lVH_1EuzaBtRs"
 
-# Логування
 logging.basicConfig(level=logging.INFO)
 
-# Ініціалізація бота та диспетчера
+# Ініціалізація бота
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
+# Створюємо клавіатуру з кнопкою "Старт"
+keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🚀 Старт")]
+    ],
+    resize_keyboard=True  # Робимо кнопку компактною
+)
 
 # Обробник команди /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Привіт! Я твій Telegram-бот. Напиши мені щось або скористайся командами /help або /random.")
+    await message.answer("Привіт! Натисни кнопку \"Старт\" 👇", reply_markup=keyboard)
 
-# Обробник команди /help
-@dp.message(Command("help"))
-async def cmd_help(message: types.Message):
-    await message.answer("Я можу виконувати наступні команди:\n/start - почати спілкування\n/help - список команд\n/random - випадкове число")
-
-# Обробник команди /random
-@dp.message(Command("random"))
-async def cmd_random(message: types.Message):
-    number = random.randint(1, 100)
-    await message.answer(f"Твоє випадкове число: {number}")
-
-# Обробник звичайних повідомлень
+# Обробник натискання кнопки "Старт"
 @dp.message()
-async def echo_message(message: types.Message):
-    await message.answer(f"Ти написав: {message.text}")
+async def button_handler(message: types.Message):
+    if message.text == "🚀 Старт":
+        await message.answer("Бот запущено! ✅")
 
 # Головна функція для запуску бота
 async def main():
