@@ -18,7 +18,7 @@ dp = Dispatcher()
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Привіт"), KeyboardButton(text="Як справи?")],
-        [KeyboardButton(text="Що ти вмієш?"), KeyboardButton(text="Школа")]
+        [KeyboardButton(text="Розклад"), KeyboardButton(text="Школа")]
     ],
     resize_keyboard=True  # Робимо кнопки компактними
 )
@@ -27,15 +27,19 @@ keyboard = ReplyKeyboardMarkup(
 RESPONSES = {
     "Привіт": "Привіт! Як справи? 😊",
     "Як справи?": "Все чудово! А в тебе?",
-    "Що ти вмієш?": "Я можу відповідати на повідомлення! 🔥",
-    "Школа": "Навчання — це круто! 📚"
+    
+    "Школа": "Гімназія №4 Павлоградської міської ради. Поштова адреса : вул. Корольова Сергія, буд. 3, м.Павлоград,  Дніпропетровська область, Україна. 51400 📚"
 }
 
 # Обробник команди /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer("Привіт! Вибери питання:", reply_markup=keyboard)
-
+#Картинка розклад
+@bot.message_handler(commands=['Розклад'])
+def send_schedule(message):
+    with open("schedule.jpg", "rb") as photo:
+        bot.send_photo(message.chat.id, photo)
 # Обробник натискання кнопок
 @dp.message()
 async def handle_buttons(message: types.Message):
