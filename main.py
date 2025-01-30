@@ -62,12 +62,6 @@ async def send_schedule(message: types.Message):
     except FileNotFoundError:
         await message.answer("Файл з розкладом не знайдено!")
         
-# Обробник натискання кнопок
-@dp.message()
-async def handle_buttons(message: types.Message):
-    text = message.text.strip()  # Видаляємо зайві пробіли
-    response = RESPONSES.get(text, "Я не знаю, що відповісти... 😅")
-    await message.answer(response)
 
 # Обробник кнопки "Як справи?"
 @dp.message(F.text == "Як справи?")
@@ -78,6 +72,14 @@ async def ask_status(message: types.Message):
 @dp.message(F.text == "Назад")
 async def go_back(message: types.Message):
     await message.answer("Повертаємося назад!", reply_markup=main_keyboard)
+
+
+# Обработчик остальных сообщений
+@dp.message()
+async def handle_buttons(message: types.Message):
+    text = message.text.strip()  # Убираем лишние пробелы
+    response = RESPONSES.get(text, "Я не знаю, что ответить... 😅")
+    await message.answer(response)
 
 
 # Головна функція для запуску бота
