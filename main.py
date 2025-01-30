@@ -2,7 +2,7 @@ import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 
 # Встав свій токен від BotFather
 TOKEN = "7620525697:AAFmUw8Dco4lt2PhWgfA22lVH_1EuzaBtRs"
@@ -34,14 +34,17 @@ RESPONSES = {
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer("Привіт! Вибери питання:", reply_markup=keyboard)
+
+
 #Картинка розклад
 @dp.message(F.text == "Розклад")
 async def send_schedule(message: types.Message):
     try:
-        with open("schedule.jpg", "rb") as photo:
-            await bot.send_photo(message.chat.id, photo)
+        photo = FSInputFile("schedule.jpg")  # Загружаем файл правильно
+        await bot.send_photo(message.chat.id, photo)
     except FileNotFoundError:
         await message.answer("Файл з розкладом не знайдено!")
+        
 # Обробник натискання кнопок
 @dp.message()
 async def handle_buttons(message: types.Message):
