@@ -33,7 +33,7 @@ status_keyboard = ReplyKeyboardMarkup(
 )
 
 # Клавіатура після "Вікторини" підменю
-status_keyboard = ReplyKeyboardMarkup(
+vik_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Старт"),KeyboardButton(text="Назад")]
     ],
@@ -75,6 +75,11 @@ async def send_schedule(message: types.Message):
 @dp.message(F.text == "Привіт")
 async def ask_status(message: types.Message):
     await message.answer("Привіт👋≧◉ᴥ◉≦ Як справи?", reply_markup=status_keyboard)
+
+#Обробка кнопки Вікторина
+@dp.message(F.text == "Вікторина")
+async def ask_status(message: types.Message):
+    await message.answer("Чудово! Тепер починається справжня інтелектуальна пригода! 🚀🧠 Готовий перевірити свої знання? Натискай та поринь у світ захопливих запитань!", reply_markup=vik_keyboard)
 
 # Обробник кнопки "Назад"
 @dp.message(F.text == "Назад")
