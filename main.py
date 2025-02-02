@@ -128,13 +128,7 @@ async def go_back(message: types.Message):
     await message.answer("Повертаємося назад!", reply_markup=main_keyboard)
 
 
-# Обработчик остальных сообщений
-@dp.message()
-async def handle_buttons(message: types.Message):
-    text = message.text.strip()  # Убираем лишние пробелы
-    response = RESPONSES.get(text, "Я не знаю, что ответить... 😅")
-    await message.answer(response)
-    
+
 # Обробник кнопки "Допомога"
 @dp.message(F.text == "Допомога")
 async def send_help_request(message: types.Message):
@@ -146,7 +140,13 @@ async def send_help_request(message: types.Message):
         await bot.send_message(ADMIN_ID, f"📩 Запит від @{msg.from_user.username} ({msg.from_user.id}):\n\n{msg.text}")
         await msg.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.")
 
-
+# Обработчик остальных сообщений
+@dp.message()
+async def handle_buttons(message: types.Message):
+    text = message.text.strip()  # Убираем лишние пробелы
+    response = RESPONSES.get(text, "Я не знаю, что ответить... 😅")
+    await message.answer(response)
+    
 # Головна функція для запуску бота
 async def main():
     await dp.start_polling(bot)
