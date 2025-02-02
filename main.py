@@ -6,7 +6,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 
 # Встав свій токен від BotFather
 TOKEN = "7620525697:AAFmUw8Dco4lt2PhWgfA22lVH_1EuzaBtRs"
-
+ADMIN_ID = 7287864631  # Вкажи Telegram ID адміністратора
 logging.basicConfig(level=logging.INFO)
 
 # Ініціалізація бота
@@ -17,7 +17,7 @@ dp = Dispatcher()
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Привіт"), KeyboardButton(text="Вікторина")],
-        [KeyboardButton(text="Розклад"), KeyboardButton(text="Школа")]
+        [KeyboardButton(text="Розклад"), KeyboardButton(text="Школа"), KeyboardButton(text="Допомога")]
     ],
     resize_keyboard=True  # Робимо кнопки компактними
 )
@@ -97,7 +97,7 @@ async def send_schedule(message: types.Message):
 async def send_schedule(message: types.Message):
     try:
         photo = FSInputFile("reb.jpg")  # Загружаем файл правильно
-        await message.answer("Так тримати, не зупиняйся. Розгадай ребус", reply_markup=vik_keyboard)
+        await message.answer("Так тримати, не зупиняйся. Розгадай ребус")
         await bot.send_photo(message.chat.id, photo)
     except FileNotFoundError:
         await message.answer("Файл не знайдено!")
@@ -134,6 +134,17 @@ async def handle_buttons(message: types.Message):
     text = message.text.strip()  # Убираем лишние пробелы
     response = RESPONSES.get(text, "Я не знаю, что ответить... 😅")
     await message.answer(response)
+    
+# Обробник кнопки "Допомога"
+@dp.message(F.text == "Допомога")
+async def send_help_request(message: types.Message):
+    await message.answer("Будь ласка, опиши свою проблему, і я передам її адміністрації.")
+    
+    # Встановлюємо стан очікування повідомлення від користувача
+    @dp.message()
+    async def forward_to_admin(msg: types.Message):
+        await bot.send_message(ADMIN_ID, f"📩 Запит від @{msg.from_user.username} ({msg.from_user.id}):\n\n{msg.text}")
+        await msg.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.")
 
 
 # Головна функція для запуску бота
