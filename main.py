@@ -3,6 +3,12 @@ import asyncio
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
+
+# Оголошуємо стан очікування тексту від користувача
+class HelpRequest(StatesGroup):
+    waiting_for_message = State()
 
 # Встав свій токен від BotFather
 TOKEN = "7620525697:AAFmUw8Dco4lt2PhWgfA22lVH_1EuzaBtRs"
@@ -131,14 +137,18 @@ async def go_back(message: types.Message):
 
 # Обробник кнопки "Допомога"
 @dp.message(F.text == "Допомога")
-async def send_help_request(message: types.Message):
+async def send_help_request(message: types.Message, state: FSMContext):
     await message.answer("Будь ласка, опиши свою проблему, і я передам її адміністрації.")
-    
-    # Встановлюємо стан очікування повідомлення від користувача
-    @dp.message()
-    async def forward_to_admin(msg: types.Message):
-        await bot.send_message(ADMIN_ID, f"📩 Запит від @{msg.from_user.username} ({msg.from_user.id}):\n\n{msg.text}")
-        await msg.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.")
+    await state.set_state(HelpRequest.waiting_for_message)  # Встановлюємо стан
+
+# Обробник повідомлення після "Допомога"
+@dp.message(HelpRequest.waiting_for_message)
+async def forward_to_admin(message: types.Message, state: FSMContext):
+    await bot.send_message(ADMIN_ID, f"📩 Запит від @{message.from_user.username} ({message.from_user.id}):\n\n{message.text}")
+    await message.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.")
+    await state.clear()  # Завершуємо стан
+
+
 
 # Обработчик остальных сообщений
 @dp.message()
