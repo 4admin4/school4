@@ -5,6 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # Оголошуємо стан очікування тексту від користувача
 class HelpRequest(StatesGroup):
@@ -190,7 +191,22 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
     await message.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.",reply_markup=main_keyboard)
     await state.clear()  # Завершуємо стан
 
+#________________
+@dp.message()
+async def handle_buttons(message: types.Message):
+    text = message.text.strip().lower()
 
+    if "вікно" in text:
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="Натисни мене", callback_data="show_alert")
+        await message.answer("Ви згадали про вікно! 🪟", reply_markup=keyboard.as_markup())
+    else:
+        await message.answer("Некоректне питання або введення. Я не знаю, що відповісти... 😅")
+
+@dp.callback_query(lambda c: c.data == "show_alert")
+async def show_alert(callback: types.CallbackQuery):
+    await callback.answer("Це спливаюче повідомлення! 😊", show_alert=True)
+#_______________
 
 # Обработчик остальных сообщений
 @dp.message()
