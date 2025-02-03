@@ -28,6 +28,15 @@ main_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True  # Робимо кнопки компактними
 )
 
+#Кнопки help
+help_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Пропозиція"), KeyboardButton(text="Скарга")],
+        [KeyboardButton(text="Відновити пароль аккаунта")]
+    ],
+    resize_keyboard=True  # Робимо кнопки компактними
+)
+
 
 # Клавіатура після "Як справи?" підменю
 status_keyboard = ReplyKeyboardMarkup(
@@ -134,18 +143,51 @@ async def go_back(message: types.Message):
     await message.answer("Повертаємося назад!", reply_markup=main_keyboard)
 
 
-
-# Обробник кнопки "Допомога"
+# Обробник кнопки help
 @dp.message(F.text == "Допомога")
+async def go_back(message: types.Message):
+    await message.answer("Оберіть з якого питання вам потрібна допомога", reply_markup=help_keyboard)
+
+
+
+# Обробник кнопки "Пропозиція"1
+@dp.message(F.text == "Пропозиція")
 async def send_help_request(message: types.Message, state: FSMContext):
-    await message.answer("Будь ласка, опиши свою проблему, і я передам її адміністрації.")
+    await message.answer("Залиште свою пропозицію, і ми обов’язково її розглянемо! Ваші ідеї важливі для нас. 😊")
+    await state.set_state(HelpRequest.waiting_for_message)  # Встановлюємо стан
+
+# О2
+@dp.message(HelpRequest.waiting_for_message)
+async def forward_to_admin(message: types.Message, state: FSMContext):
+    await bot.send_message(ADMIN_ID, f"📩 Пропозиція від @{message.from_user.username} :\n\n{message.text}")
+    await message.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.",reply_markup=main_keyboard)
+    await state.clear()  # Завершуємо стан
+
+
+# Обробник кнопки "Скарга"1
+@dp.message(F.text == "Скарга")
+async def send_help_request(message: types.Message, state: FSMContext):
+    await message.answer("Опишіть проблему, і ми обов’язково розглянемо її в найкоротші терміни. Ваша думка важлива для нас!",reply_markup=main_keyboard)
+    await state.set_state(HelpRequest.waiting_for_message)  # Встановлюємо стан
+
+# О2
+@dp.message(HelpRequest.waiting_for_message)
+async def forward_to_admin(message: types.Message, state: FSMContext):
+    await bot.send_message(ADMIN_ID, f"📩 Скарга від @{message.from_user.username} :\n\n{message.text}")
+    await message.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.",reply_markup=main_keyboard)
+    await state.clear()  # Завершуємо стан
+
+# Обробник кнопки "Відновити пароль аккаута
+@dp.message(F.text == "Відновити пароль аккаунта")
+async def send_help_request(message: types.Message, state: FSMContext):
+    await message.answer("Будь ласка, вкажіть свій акаунт або Прізвище, Ім'я, клас, а також, що потрібно відновити.")
     await state.set_state(HelpRequest.waiting_for_message)  # Встановлюємо стан
 
 # Обробник повідомлення після "Допомога"
 @dp.message(HelpRequest.waiting_for_message)
 async def forward_to_admin(message: types.Message, state: FSMContext):
-    await bot.send_message(ADMIN_ID, f"📩 Запит від @{message.from_user.username} ({message.from_user.id}):\n\n{message.text}")
-    await message.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.")
+    await bot.send_message(ADMIN_ID, f"📩 Відновлення пароля від @{message.from_user.username}:\n\n{message.text}")
+    await message.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.",reply_markup=main_keyboard)
     await state.clear()  # Завершуємо стан
 
 
