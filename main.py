@@ -31,7 +31,7 @@ main_keyboard = ReplyKeyboardMarkup(
 #Кнопки help
 help_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Пропозиція"), KeyboardButton(text="Скарга")],
+        [KeyboardButton(text="Залишити пропозицію"), KeyboardButton(text="Подати скаргу")],
         [KeyboardButton(text="Відновити пароль аккаунта")]
     ],
     resize_keyboard=True  # Робимо кнопки компактними
@@ -151,7 +151,7 @@ async def go_back(message: types.Message):
 
 
 # Обробник кнопки "Пропозиція"1
-@dp.message(F.text == "Пропозиція")
+@dp.message(F.text == "Залишити пропозицію")
 async def send_help_request(message: types.Message, state: FSMContext):
     await message.answer("Залиште свою пропозицію, і ми обов’язково її розглянемо! Ваші ідеї важливі для нас. 😊")
     await state.set_state(HelpRequest.waiting_for_message)  # Встановлюємо стан
@@ -165,7 +165,7 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
 
 
 # Обробник кнопки "Скарга"1
-@dp.message(F.text == "Скарга")
+@dp.message(F.text == "Подати скаргу")
 async def send_help_request(message: types.Message, state: FSMContext):
     await message.answer("Опишіть проблему, і ми обов’язково розглянемо її в найкоротші терміни. Ваша думка важлива для нас!",reply_markup=main_keyboard)
     await state.set_state(HelpRequest.waiting_for_message)  # Встановлюємо стан
