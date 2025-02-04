@@ -32,7 +32,7 @@ main_keyboard = ReplyKeyboardMarkup(
 #Кнопки help
 help_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Залишити пропозицію"), KeyboardButton(text="Подати скаргу")],
+        [KeyboardButton(text="Залишити пропозицію"), KeyboardButton(text="Часті запитання (FAQ)")],
         [KeyboardButton(text="Відновити пароль аккаунта")]
     ],
     resize_keyboard=True  # Робимо кнопки компактними
@@ -165,18 +165,17 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
     await state.clear()  # Завершуємо стан
 
 
-# Обробник кнопки "Скарга"1
-@dp.message(F.text == "Подати скаргу")
-async def send_help_request(message: types.Message, state: FSMContext):
-    await message.answer("Опишіть проблему, і ми обов’язково розглянемо її в найкоротші терміни. Ваша думка важлива для нас!",reply_markup=main_keyboard)
-    await state.set_state(HelpRequest.waiting_for_message)  # Встановлюємо стан
+# Обробник кнопки "Часті питання"1
+@dp.message(F.text == "Часті запитання (FAQ)")
+async def ask_status(message: types.Message):
+    await message.answer("*Ввів аккаунт та пароль але Google клас не завантажує урок*\n"
+                         "Переконайся чи є пароль на телефоні\n"
+                         "Інколи батьківський контроль блокує роботу\n \n"
+                         "*Не працює долучення до відео уроку*\n"
+                         "Проблема в батьківському контролі\n"
+                         , reply_markup=main_keyboard)
 
-# О2
-@dp.message(HelpRequest.waiting_for_message)
-async def forward_to_admin(message: types.Message, state: FSMContext):
-    await bot.send_message(ADMIN_ID, f"📩 Скарга від @{message.from_user.username} :\n\n{message.text}")
-    await message.answer("Ваше повідомлення передано адміністрації. Очікуйте відповідь.",reply_markup=main_keyboard)
-    await state.clear()  # Завершуємо стан
+
 
 # Обробник кнопки "Відновити пароль аккаута
 @dp.message(F.text == "Відновити пароль аккаунта")
