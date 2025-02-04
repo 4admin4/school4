@@ -168,13 +168,15 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
 # Обробник кнопки "Часті питання"1
 @dp.message(F.text == "Часті запитання (FAQ)")
 async def ask_status(message: types.Message):
-    await message.answer("**Ввів аккаунт та пароль але Google клас не завантажує урок**\n"
-                         "Переконайся чи є пароль на телефоні\n"
-                         "Інколи батьківський контроль блокує роботу\n \n"
-                         "**Не працює долучення до відео уроку**\n"
-                         "Проблема в батьківському контролі\n"
-                         ,parse_mode="MarkdownV2", reply_markup=main_keyboard)
-
+    await message.answer(
+        "*Ввів аккаунт та пароль, але Google Клас не завантажує урок*\n"
+        "Переконайся, чи є пароль на телефоні\n"
+        "Інколи батьківський контроль блокує роботу\n\n"
+        "*Не працює долучення до відеоуроку*\n"
+        "Проблема в батьківському контролі\n",
+        parse_mode="MarkdownV2",
+        reply_markup=main_keyboard
+    )
 
 
 # Обробник кнопки "Відновити пароль аккаута
