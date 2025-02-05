@@ -211,7 +211,7 @@ async def show_alert(callback: types.CallbackQuery):
 # Обработчик остальных сообщений
 @dp.message()
 async def handle_buttons(message: types.Message):
-    text = message.text.strip()  # Убираем лишние пробелы
+    text = message.text.strip().capitalize()  # Видаляє пробіли та робить першу літеру великою
     response = RESPONSES.get(text, "Некоректне питання або введення. Я не знаю, що відповісти... 😅")
     await message.answer(response)
     
