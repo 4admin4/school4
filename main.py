@@ -194,13 +194,11 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
 async def handle_buttons(message: types.Message):
     text = message.text.strip().lower()
 
-    if "вікно" in text:
-        keyboard = InlineKeyboardBuilder()
-        keyboard.button(text="Натисни мене", callback_data="show_alert")
-        await message.answer("Ви згадали про вікно! 🪟", reply_markup=keyboard.as_markup())#Вспливаюче вікно
-    else:
-        response = RESPONSES.get(text, "Некоректне питання або введення. Я не знаю, що відповісти... 😅")
+    if text in RESPONSES:  # Перевіряємо, чи є введений текст у словнику
+        response = RESPONSES[text]
         await message.answer(response)
+    else:
+        await message.answer("Некоректне питання або введення. Я не знаю, що відповісти... 😅")
 #_______________________________________
     
 # Головна функція для запуску бота
