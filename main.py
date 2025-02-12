@@ -192,11 +192,9 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
 #________________
 @dp.message()
 async def handle_buttons(message: types.Message):
-@dp.message()
-async def handle_buttons(message: types.Message):
-text = message.text.strip()  # Убираем лишние пробелы
-response = RESPONSES.get(text, "Я не знаю, что ответить... 😅")
-await message.answer(response)
+    text = message.text.strip()  # Убираем лишние пробелы
+    response = RESPONSES.get(text, "Я не знаю, что ответить... 😅")
+    await message.answer(response)
     
 # Головна функція для запуску бота
 async def main():
