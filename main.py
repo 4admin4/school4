@@ -5,60 +5,138 @@ from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# Оголошуємо стан очікування тексту від користувача
-class HelpRequest(StatesGroup):
-    waiting_for_message = State()
+# 1. Різні стани для різних дій
+class BotStates(StatesGroup):
+    waiting_for_suggestion = State()
+    waiting_for_password_reset = State()
 
-# Встав свій токен від BotFather
 TOKEN = "7620525697:AAFmUw8Dco4lt2PhWgfA22lVH_1EuzaBtRs"
-ADMIN_ID = 7287864631  # Вкажи Telegram ID адміністратора
+ADMIN_ID = 7287864631
 logging.basicConfig(level=logging.INFO)
 
-# Ініціалізація бота
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-#Кнопки
+# --- КЛАВІАТУРИ ---
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Привіт"), KeyboardButton(text="Вікторина")],
         [KeyboardButton(text="Розклад"), KeyboardButton(text="Школа"), KeyboardButton(text="Допомога")]
     ],
-    resize_keyboard=True  # Робимо кнопки компактними
+    resize_keyboard=True
 )
 
-#Кнопки help
 help_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Залишити пропозицію"), KeyboardButton(text="Часті запитання (FAQ)")],
-        [KeyboardButton(text="Відновити пароль аккаунта")]
+        [KeyboardButton(text="Відновити пароль аккаунта")],
+        [KeyboardButton(text="Назад")]
     ],
-    resize_keyboard=True  # Робимо кнопки компактними
+    resize_keyboard=True
 )
 
-
-# Клавіатура після "Як справи?" підменю
 status_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Добре"), KeyboardButton(text="Погано")],
-          ],
+    keyboard=[[KeyboardButton(text="Добре"), KeyboardButton(text="Погано")]],
     resize_keyboard=True
 )
 
-# Клавіатура після "Вікторини" підменю
 vik_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Старт"),KeyboardButton(text="Назад")]
-    ],
+    keyboard=[[KeyboardButton(text="Старт"), KeyboardButton(text="Назад")]],
     resize_keyboard=True
 )
 
-# Список відповідей
+# --- ВІДПОВІДІ ---
 RESPONSES = {
-    "Старт":"Почнемо з простого🥳. Обери надійний пароль з наявних та введи його.\n\n"
-    " pas123 ;  Nastya12 ;  N43i@_2nisU ",
+    "Старт": "Почнемо з простого🥳. Обери надійний пароль...",
+    "N43i@_2nisU": "Молодець🤩, ти переміг! Подарунок: https://viktorina.webnode.com.ua/",
+    "Школа": "Гімназія №4 Павлоградської міської ради.\n📍 Адреса: вул. Корольова Сергія, 3.",
+    # Додайте інші ключі сюди...
+}
+
+# --- ОБРОБНИКИ ---
+
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message):
+    await message.answer("Привіт! Вибери питання:", reply_markup=main_keyboard)
+
+@dp.message(F.text == "Розклад")
+async def send_schedule(message: types.Message):
+    try:
+        photo = FSInputFile("schedule.jpg")
+        await message.answer_photo(photo, caption="Ваш розклад")
+    except Exception:
+        await message.answer("Файл з розкладом не знайдено!")
+
+@dp.message(F.text.casefold() == "panda")
+async def send_rebus(message: types.Message):
+    try:
+        photo = FSInputFile("reb.jpg")
+        await message.answer("Так тримати! Розгадай ребус:")
+        await message.answer_photo(photo)
+    except Exception:
+        await message.answer("Файл не знайдено!")
+
+@dp.message(F.text == "Привіт")
+async def ask_status(message: types.Message):
+    await message.answer("Привіт👋 Як справи?", reply_markup=status_keyboard)
+
+@dp.message(F.text == "Допомога")
+async def help_menu(message: types.Message):
+    await message.answer("Оберіть питання:", reply_markup=help_keyboard)
+
+# --- РОБОТА З FSM (СТАНИ) ---
+
+@dp.message(F.text == "Залишити пропозицію")
+async def suggest_start(message: types.Message, state: FSMContext):
+    await message.answer("Напишіть вашу пропозицію:")
+    await state.set_state(BotStates.waiting_for_suggestion)
+
+@dp.message(BotStates.waiting_for_suggestion)
+async def suggest_finish(message: types.Message, state: FSMContext):
+    await bot.send_message(ADMIN_ID, f"📩 Пропозиція від @{message.from_user.username}:\n{message.text}")
+    await message.answer("Дякуємо! Пропозицію надіслано.", reply_markup=main_keyboard)
+    await state.clear()
+
+@dp.message(F.text == "Відновити пароль аккаунта")
+async def pass_start(message: types.Message, state: FSMContext):
+    await message.answer("Вкажіть ПІБ, клас та акаунт:")
+    await state.set_state(BotStates.waiting_for_password_reset)
+
+@dp.message(BotStates.waiting_for_password_reset)
+async def pass_finish(message: types.Message, state: FSMContext):
+    await bot.send_message(ADMIN_ID, f"🔑 Запит на пароль від @{message.from_user.username}:\n{message.text}")
+    await message.answer("Запит надіслано адміністратору.", reply_markup=main_keyboard)
+    await state.clear()
+
+# --- FAQ (Виправлено Markdown) ---
+@dp.message(F.text == "Часті запитання (FAQ)")
+async def faq_cmd(message: types.Message):
+    text = (
+        "*Google Клас не завантажує урок*\n"
+        "• Переконайся, що встановлено пароль на екран телефону\n"
+        "• Перевір налаштування батьківського контролю\n\n"
+        "*Не працює відеоурок*\n"
+        "• Найчастіше проблема у Google Family Link"
+    )
+    await message.answer(text, parse_mode="Markdown", reply_markup=main_keyboard)
+
+# --- ЗАГАЛЬНИЙ ОБРОБНИК ---
+@dp.message()
+async def handle_buttons(message: types.Message):
+    res = RESPONSES.get(message.text)
+    if res:
+        await message.answer(res)
+    elif message.text == "Назад":
+        await message.answer("Головне меню", reply_markup=main_keyboard)
+    else:
+        await message.answer("Я не впевнений, що розумію. Спробуйте скористатися кнопками.")
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
     "N43i@_2nisU": "Молодець🤩, ти переміг! Забери подарунок: https://viktorina.webnode.com.ua/",
     "123w":"⚠️ Не переходь на невідомі посилання та не завантажуй підозрілі файли! "
     "Це може призвести до крадіжки паролів, вірусів і зламу акаунтів. Будь обережним! 🔒\n"
