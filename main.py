@@ -9,6 +9,40 @@ from aiogram.fsm.context import FSMContext
 
 from aiohttp import web
 
+#База даних одним файлом
+import sqlite3
+
+def init_db():
+    conn = sqlite3.connect("bot_data.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# Викликаємо ініціалізацію відразу Та дві функції для картинки
+init_db()
+
+def save_schedule_id(photo_id):
+    conn = sqlite3.connect("bot_data.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ("schedule_id", photo_id))
+    conn.commit()
+    conn.close()
+
+def get_schedule_id():
+    conn = sqlite3.connect("bot_data.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM settings WHERE key = ?", ("schedule_id",))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
+
 # Функція, яка відповідає Render "Я живий!"
 async def handle(request):
     return web.Response(text="Bot is running!")
