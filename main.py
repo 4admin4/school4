@@ -63,11 +63,13 @@ class BotStates(StatesGroup):
 # --- 4. КЛАВІАТУРИ ---
 
 # Глобальна функція для створення клавіатур варіантів (для вікторини)
-def get_quiz_kb(options: list):
-    # Кожен варіант буде окремою кнопкою в окремому рядку
-    buttons = [[KeyboardButton(text=opt)] for opt in options]
-    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True, one_time_keyboard=True)
-
+def get_quiz_kb():
+    keyboard = [
+        [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+    
 # Головне меню
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
