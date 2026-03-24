@@ -3,7 +3,7 @@ import asyncio
 import os
 import sqlite3
 import random
-import google.generativeai as genai
+import google.genai as genai
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -13,9 +13,9 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiohttp import web
 
 # --- 1. НАЛАШТУВАННЯ ---
-TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ТЕЛЕГРАМ_ТОКЕН")
-ADMIN_ID = 8635308149  # Ваш ID
-GEMINI_KEY = "AIzaSyA23JRsoG9vzL3nZ3OXA3f0g3aoThJCS68"
+TOKEN = os.getenv("BOT_TOKEN")
+GEMINI_KEY = os.getenv("GEMINI_KEY")
+ADMIN_ID = 8635308149 # Ваш ID
 
 # Налаштування ШІ Gemini
 genai.configure(api_key=GEMINI_KEY)
