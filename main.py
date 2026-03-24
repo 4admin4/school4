@@ -20,8 +20,7 @@ ADMIN_ID = 8635308149 # Ваш ID
 # Створюємо клієнта Gemini (новий синтаксис)
 client = genai.Client(api_key=GEMINI_KEY)
 # Налаштування ШІ Gemini
-genai.configure(api_key=GEMINI_KEY)
-ai_model = genai.GenerativeModel('gemini-1.5-flash')
+
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
