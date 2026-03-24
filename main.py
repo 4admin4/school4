@@ -67,7 +67,6 @@ RESPONSES = {
 }
 
 # --- ОБРОБНИКИ ---
-
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer("Вітаємо у боті Гімназії №4!", reply_markup=main_keyboard)
@@ -75,18 +74,20 @@ async def cmd_start(message: types.Message):
 # РОЗДІЛ: РОЗКЛАД
 @dp.message(F.text == "🔔 Розклад 🔔")
 async def send_schedule(message: types.Message):
-    global current_schedule_id
+    # Пріоритет 1: Перевіряємо налаштування Render
+    # Пріоритет 2: Перевіряємо тимчасову пам'ять
+    photo_id = os.getenv("SCHEDULE_ID") or current_schedule_id
+    
     try:
-        if current_schedule_id:
-            # Якщо адмін надіслав фото в цьому сеансі
-            await message.answer_photo(photo=current_schedule_id, caption="📅 Актуальний розклад (оновлено)")
+        if photo_id:
+            await message.answer_photo(photo=photo_id, caption="📅 Актуальний розклад")
         else:
-            # Якщо фото в пам'яті немає — шукаємо файл
+            # Якщо нічого немає, пробуємо файл
             photo = FSInputFile("schedule.jpg")
-            await message.answer_photo(photo=photo, caption="📅 Поточний розклад занять (з файлу)")
+            await message.answer_photo(photo=photo, caption="📅 Розклад (файл)")
     except Exception as e:
-        logging.error(f"Error: {e}")
-        await message.answer("❌ Файл з розкладом не знайдено. Адмін, надішли фото розкладу!")
+        await message.answer("❌ Фото ще не налаштовано. Адмін, надішли картинку!")
+
 
 # РОЗДІЛ: ШКОЛА
 @dp.message(F.text == "🏫 Школа")
