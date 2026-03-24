@@ -7,6 +7,24 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
+from aiohttp import web
+
+# Функція, яка відповідає Render "Я живий!"
+async def handle(request):
+    return web.Response(text="Bot is running!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    # Render передає порт через змінну оточення PORT
+    port = int(os.getenv("PORT", 8080)) 
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logging.info(f"Web server started on port {port}")
+
 # --- ГЛОБАЛЬНА ЗМІННА ДЛЯ РОЗКЛАДУ ---
 # Це та сама "комірка", де зберігатиметься ID фото
 current_schedule_id = None 
@@ -150,7 +168,15 @@ async def handle_all(message: types.Message):
         await message.answer("Скористайтеся меню.")
 
 async def main():
+    # 1. Запускаємо веб-сервер у фоні
+    await start_web_server()
+    
+    # 2. Видаляємо вебхуки (на всякий випадок) і запускаємо polling
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logging.info("Bot stopped")
