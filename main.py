@@ -1,17 +1,15 @@
 import logging
 import asyncio
 import os
+import sqlite3
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-
 from aiohttp import web
 
-#База даних одним файлом
-import sqlite3
-
+# --- БАЗА ДАНИХ ---
 def init_db():
     conn = sqlite3.connect("bot_data.db")
     cursor = conn.cursor()
@@ -23,9 +21,6 @@ def init_db():
     """)
     conn.commit()
     conn.close()
-
-# Викликаємо ініціалізацію відразу Та дві функції для картинки
-init_db()
 
 def save_schedule_id(photo_id):
     conn = sqlite3.connect("bot_data.db")
@@ -42,8 +37,9 @@ def get_schedule_id():
     conn.close()
     return result[0] if result else None
 
+init_db()
 
-# Функція, яка відповідає Render "Я живий!"
+# --- ВЕБ-СЕРВЕР ДЛЯ RENDER ---
 async def handle(request):
     return web.Response(text="Bot is running!")
 
@@ -52,23 +48,12 @@ async def start_web_server():
     app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    
-    # Render передає порт через змінну оточення PORT
     port = int(os.getenv("PORT", 8080)) 
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     logging.info(f"Web server started on port {port}")
 
-# --- ГЛОБАЛЬНА ЗМІННА ДЛЯ РОЗКЛАДУ ---
-# Це та сама "комірка", де зберігатиметься ID фото
-current_schedule_id = None 
-
-# 1. СТАНИ (FSM)
-class BotStates(StatesGroup):
-    waiting_for_suggestion = State()
-    waiting_for_password_reset = State()
-
-# НАЛАШТУВАННЯ
+# --- НАЛАШТУВАННЯ БОТА ---
 TOKEN = os.getenv("BOT_TOKEN", "8602310062:AAEHbEKlma1p7oT9yuJFISuqbnolgk-0l9I")
 ADMIN_ID = 8635308149
 
@@ -76,18 +61,9 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# АДМІН-КОМАНДА: ОНОВЛЕННЯ РОЗКЛАДУ
-@dp.message(F.photo, F.from_user.id == ADMIN_ID)
-async def update_schedule_photo(message: types.Message):
-    global current_schedule_id  # Кажемо боту використовувати глобальну комірку
-    current_schedule_id = message.photo[-1].file_id  # Записуємо нове фото
-    
-    await message.answer(
-        f"✅ <b>Розклад оновлено в пам'яті бота!</b>\n\n"
-        f"Тепер при натисканні на кнопку учні бачитимуть це фото.\n"
-        f"Його ID: <code>{current_schedule_id}</code>", 
-        parse_mode="HTML"
-    )
+class BotStates(StatesGroup):
+    waiting_for_suggestion = State()
+    waiting_for_password_reset = State()
 
 # --- КЛАВІАТУРИ ---
 main_keyboard = ReplyKeyboardMarkup(
@@ -119,29 +95,38 @@ RESPONSES = {
 }
 
 # --- ОБРОБНИКИ ---
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer("Вітаємо у боті Гімназії №4!", reply_markup=main_keyboard)
 
-# РОЗДІЛ: РОЗКЛАД
+# АДМІН-ОНОВЛЕННЯ РОЗКЛАДУ (Збереження в базу)
+@dp.message(F.photo, F.from_user.id == ADMIN_ID)
+async def update_schedule_photo(message: types.Message):
+    photo_id = message.photo[-1].file_id
+    save_schedule_id(photo_id)  # Зберігаємо в SQLite
+    
+    await message.answer(
+        f"✅ <b>Розклад збережено в базу даних!</b>\n\n"
+        f"Тепер учні бачитимуть це фото.\n"
+        f"ID: <code>{photo_id}</code>", 
+        parse_mode="HTML"
+    )
+
 @dp.message(F.text == "🔔 Розклад 🔔")
 async def send_schedule(message: types.Message):
-    # Пріоритет 1: Перевіряємо налаштування Render
-    # Пріоритет 2: Перевіряємо тимчасову пам'ять
-    photo_id = os.getenv("SCHEDULE_ID") or current_schedule_id
+    # Пріоритет: 1. База даних -> 2. ENV -> 3. Файл
+    photo_id = get_schedule_id() or os.getenv("SCHEDULE_ID")
     
     try:
         if photo_id:
             await message.answer_photo(photo=photo_id, caption="📅 Актуальний розклад")
         else:
-            # Якщо нічого немає, пробуємо файл
             photo = FSInputFile("schedule.jpg")
-            await message.answer_photo(photo=photo, caption="📅 Розклад (файл)")
+            await message.answer_photo(photo=photo, caption="📅 Розклад (з файлу)")
     except Exception as e:
-        await message.answer("❌ Фото ще не налаштовано. Адмін, надішли картинку!")
+        await message.answer("❌ Фото не налаштовано. Адмін, надішли картинку розкладу!")
 
-
-# РОЗДІЛ: ШКОЛА
 @dp.message(F.text == "🏫 Школа")
 async def school_info(message: types.Message):
     text = (
@@ -151,7 +136,6 @@ async def school_info(message: types.Message):
     )
     await message.answer(text, parse_mode="HTML")
 
-# РОЗДІЛ: ВІКТОРИНА
 @dp.message(F.text == "🎮 Вікторина")
 async def quiz_menu(message: types.Message):
     await message.answer("Ласкаво просимо до гри! 🧠", reply_markup=vik_keyboard)
@@ -167,8 +151,6 @@ async def help_menu(message: types.Message):
 @dp.message(F.text == "⬅️ Назад")
 async def go_back(message: types.Message):
     await message.answer("Головне меню", reply_markup=main_keyboard)
-
-# --- FSM (ФОРМИ) ---
 
 @dp.message(F.text == "💡 Залишити пропозицію")
 async def suggest_start(message: types.Message, state: FSMContext):
@@ -191,7 +173,7 @@ async def process_fsm_data(message: types.Message, state: FSMContext):
 
 @dp.message(F.text == "📝 FAQ")
 async def faq_cmd(message: types.Message):
-    await message.answer("<b>FAQ</b>\n\nПитання тут...", parse_mode="HTML")
+    await message.answer("<b>FAQ</b>\n\nТут ваші відповіді на питання...", parse_mode="HTML")
 
 @dp.message()
 async def handle_all(message: types.Message):
@@ -202,10 +184,7 @@ async def handle_all(message: types.Message):
         await message.answer("Скористайтеся меню.")
 
 async def main():
-    # 1. Запускаємо веб-сервер у фоні
     await start_web_server()
-    
-    # 2. Видаляємо вебхуки (на всякий випадок) і запускаємо polling
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
@@ -213,4 +192,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("Bot stopped")
+        pass
