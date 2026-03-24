@@ -20,6 +20,19 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
+
+# НАЛАШТУВАННЯ "Адмін-команди" міняє картинку
+@dp.message(F.photo, F.from_user.id == ADMIN_ID)
+async def update_schedule_photo(message: types.Message):
+    # Отримуємо ID останнього відправленого фото
+    new_file_id = message.photo[-1].file_id
+    
+    # Тут можна або зберегти в БД, або просто вивести його тобі, 
+    # щоб ти вставив його в змінні оточення Render
+    await message.answer(f"✅ Фото отримано! Його ID:\n<code>{new_file_id}</code>", parse_mode="HTML")
+
+
+
 # --- КЛАВІАТУРИ ---
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -59,12 +72,21 @@ async def cmd_start(message: types.Message):
 # РОЗДІЛ: РОЗКЛАД
 @dp.message(F.text == "🔔 Розклад 🔔")
 async def send_schedule(message: types.Message):
+    global current_schedule_id
     try:
-        photo = FSInputFile("schedule.jpg")
-        await message.answer_photo(photo, caption="📅 Поточний розклад занять")
-    except Exception:
-        await message.answer("❌ Файл з розкладом тимчасово відсутній на сервері.")
+        if current_schedule_id:
+            # Якщо ми вже надсилали нове фото в цьому сеансі
+            await message.answer_photo(photo=current_schedule_id, caption="📅 Актуальний розклад (оновлено)")
+        else:
+            # Якщо нове фото ще не надсилали — беремо локальний файл
+            photo = FSInputFile("schedule.jpg")
+            await message.answer_photo(photo=photo, caption="📅 Поточний розклад занять (з файлу)")
+    except Exception as e:
+        logging.error(f"Error sending schedule: {e}")
+        await message.answer("❌ Файл з розкладом тимчасово відсутній.")
 
+
+        
 # РОЗДІЛ: ШКОЛА
 @dp.message(F.text == "🏫 Школа")
 async def school_info(message: types.Message):
