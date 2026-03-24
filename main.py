@@ -17,6 +17,8 @@ TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 ADMIN_ID = 8635308149 # Ваш ID
 
+# Створюємо клієнта Gemini (новий синтаксис)
+client = genai.Client(api_key=GEMINI_KEY)
 # Налаштування ШІ Gemini
 genai.configure(api_key=GEMINI_KEY)
 ai_model = genai.GenerativeModel('gemini-1.5-flash')
@@ -199,14 +201,20 @@ async def ai_ask(message: types.Message, state: FSMContext):
     await message.answer("Напишіть ваше запитання для ШІ (наприклад: 'Поясни теорему Піфагора'):")
     await state.set_state(BotStates.waiting_for_ai_question)
 
+# Оновлений обробник Gemini
 @dp.message(BotStates.waiting_for_ai_question)
 async def ai_process(message: types.Message, state: FSMContext):
     msg = await message.answer("🔎 Шукаю відповідь у мізках...")
     try:
-        response = ai_model.generate_content(f"Ти помічник учня школи. Відповідай коротко і зрозуміло українською мовою: {message.text}")
+        # Новий синтаксис запиту
+        response = client.models.generate_content(
+            model="gemini-1.5-flash", 
+            contents=f"Ти помічник учня школи. Відповідай коротко і зрозуміло українською мовою: {message.text}"
+        )
         await msg.edit_text(response.text)
-    except:
-        await msg.edit_text("❌ Помилка доступу до ШІ.")
+    except Exception as e:
+        logging.error(f"AI Error: {e}")
+        await msg.edit_text("❌ Помилка доступу до ШІ. Перевірте API ключ у налаштуваннях Render.")
     await state.clear()
 
 # --- ВІКТОРИНА ---
