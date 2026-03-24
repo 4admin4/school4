@@ -154,7 +154,21 @@ async def back_button(message: types.Message, state: FSMContext):
 
 @dp.message(F.text == "🏫 Школа")
 async def school_info(message: types.Message):
-    await message.answer("Гімназія №4 Павлоград\nвул. Корольова, 3", parse_mode="HTML")
+    text = (
+        "<b>🏫 Гімназія №4 Павлоградської міської ради</b>\n\n"
+        "📍 <b>Адреса:</b> <a href='https://www.google.com/maps/search/?api=1&query=вулиця+Сергія+Корольова,+3,+Павлоград'>вул. Сергія Корольова, 3</a>\n\n"
+        "🔗 <b>Корисні посилання:</b>\n"
+        "🔹 <a href='https://www.sc4.dp.ua/'>Офіційний сайт гімназії</a>\n"
+        "🔹 <a href='https://nz.ua/'>Платформа щоденник (Надають учням та їхнім батькам постійний доступ до всієї історії отриманих оцінок)</a>\n\n"
+        "🔹 <a href='https://www.facebook.com/groups/625419974786074/'>Сторінка на facebook</a>\n\n"
+        "<i>Натисніть на адресу, щоб відкрити карту</i> 🗺️"
+    )
+    
+    await message.answer(
+        text, 
+        parse_mode="HTML", 
+        disable_web_page_preview=False  # Дозволяє показати мініатюру карти/сайту
+    )
 
 @dp.message(F.text == "❓ Допомога")
 async def help_menu(message: types.Message):
