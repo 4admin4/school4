@@ -3,7 +3,6 @@ import asyncio
 import os
 import sqlite3
 import random
-# import google.genai as genai
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -14,13 +13,7 @@ from aiohttp import web
 
 # --- 1. НАЛАШТУВАННЯ ---
 TOKEN = os.getenv("BOT_TOKEN")
-#GEMINI_KEY = os.getenv("GEMINI_KEY")
-ADMIN_ID = 8635308149 # Ваш ID
-
-# Створюємо клієнта Gemini (новий синтаксис)
-#client = genai.Client(api_key=GEMINI_KEY)
-# Налаштування ШІ Gemini
-
+ADMIN_ID = 8635308149 
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
@@ -50,17 +43,19 @@ def get_all_users():
     conn.close()
     return users
 
-def save_schedule_id(photo_id):
+# Універсальна функція збереження налаштувань
+def save_setting(key, value):
     conn = sqlite3.connect("bot_data.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ("schedule_id", photo_id))
+    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
 
-def get_schedule_id():
+# Універсальна функція отримання налаштувань
+def get_setting(key):
     conn = sqlite3.connect("bot_data.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT value FROM settings WHERE key = ?", ("schedule_id",))
+    cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else None
@@ -71,11 +66,11 @@ init_db()
 class BotStates(StatesGroup):
     waiting_for_suggestion = State()
     waiting_for_broadcast = State()
-    #waiting_for_ai_question = State()
+    waiting_for_schedule_photo = State()
+    waiting_for_menu_photo = State()
 
 # --- 4. КЛАВІАТУРИ ---
 
-# Головне меню
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔔 Розклад 🔔"), KeyboardButton(text="🎓 Центр учня")],
@@ -85,17 +80,14 @@ main_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Меню Центру учня
 student_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔮 Передбачення оцінки"), KeyboardButton(text="🍎 Меню їдальні")],
-        #[KeyboardButton(text="🤖 Запитати Gemini")],
-        [ KeyboardButton(text="💡 Залишити пропозицію"), KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="💡 Залишити пропозицію"), KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
 )
 
-# Допомога
 help_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📝 FAQ"), KeyboardButton(text="🔑 Відновити пароль")],
@@ -104,7 +96,6 @@ help_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Інлайн-клавіатура для вікторини
 def get_quiz_kb(step):
     builder = InlineKeyboardBuilder()
     if step == 1:
@@ -117,7 +108,7 @@ def get_quiz_kb(step):
         builder.row(InlineKeyboardButton(text="3. Tr0n_&_4", callback_data="quiz_step3"))
     return builder.as_markup()
 
-# --- 5. ВЕБ-СЕРВЕР (Для хостингів типу Render/Replit) ---
+# --- 5. ВЕБ-СЕРВЕР ---
 async def handle(request):
     return web.Response(text="Bot is alive!")
 
@@ -138,10 +129,32 @@ async def cmd_start(message: types.Message, state: FSMContext = None):
     await message.answer(f"Привіт, {message.from_user.first_name}! Вітаємо у боті Гімназії №4 🏫", reply_markup=main_keyboard)
 
 # --- АДМІН-ФУНКЦІЇ ---
-@dp.message(F.photo, F.from_user.id == ADMIN_ID)
-async def update_schedule(message: types.Message):
-    save_schedule_id(message.photo[-1].file_id)
-    await message.answer("✅ Новий розклад збережено у базі!")
+
+# Команда для оновлення розкладу
+@dp.message(Command("set_schedule"), F.from_user.id == ADMIN_ID)
+async def set_schedule_start(message: types.Message, state: FSMContext):
+    await message.answer("📸 Відправте фото НОВОГО РОЗКЛАДУ:")
+    await state.set_state(BotStates.waiting_for_schedule_photo)
+
+@dp.message(BotStates.waiting_for_schedule_photo, F.photo)
+async def process_schedule_photo(message: types.Message, state: FSMContext):
+    photo_id = message.photo[-1].file_id
+    save_setting("schedule_id", photo_id)
+    await message.answer("✅ Розклад успішно оновлено!")
+    await state.clear()
+
+# Команда для оновлення меню
+@dp.message(Command("set_menu"), F.from_user.id == ADMIN_ID)
+async def set_menu_start(message: types.Message, state: FSMContext):
+    await message.answer("📸 Відправте фото МЕНЮ ЇДАЛЬНІ:")
+    await state.set_state(BotStates.waiting_for_menu_photo)
+
+@dp.message(BotStates.waiting_for_menu_photo, F.photo)
+async def process_menu_photo(message: types.Message, state: FSMContext):
+    photo_id = message.photo[-1].file_id
+    save_setting("menu_id", photo_id)
+    await message.answer("✅ Меню їдальні оновлено!")
+    await state.clear()
 
 @dp.message(Command("broadcast"), F.from_user.id == ADMIN_ID)
 async def broadcast_start(message: types.Message, state: FSMContext):
@@ -163,11 +176,11 @@ async def broadcast_send(message: types.Message, state: FSMContext):
 # --- РОЗКЛАД ---
 @dp.message(F.text == "🔔 Розклад 🔔")
 async def send_schedule(message: types.Message):
-    photo_id = get_schedule_id()
+    photo_id = get_setting("schedule_id")
     if photo_id:
         await message.answer_photo(photo=photo_id, caption="📅 Актуальний розклад занять")
     else:
-        await message.answer("❌ Розклад поки не завантажений адміністрацією.")
+        await message.answer("❌ Розклад поки не завантажений адміністрацією. Використовуйте /set_schedule")
 
 # --- ЦЕНТР УЧНЯ ---
 @dp.message(F.text == "🎓 Центр учня")
@@ -181,7 +194,11 @@ async def get_prediction(message: types.Message):
 
 @dp.message(F.text == "🍎 Меню їдальні")
 async def school_menu(message: types.Message):
-    await message.answer("🍴 **Сьогодні в меню:**\n• Суп овочевий\n• Плов з м'ясом\n• Компот\n• Свіжа випічка", parse_mode="Markdown")
+    photo_id = get_setting("menu_id")
+    if photo_id:
+        await message.answer_photo(photo=photo_id, caption="🍴 Актуальне меню в їдальні")
+    else:
+        await message.answer("🍴 Меню ще не завантажене. Використовуйте /set_menu")
 
 @dp.message(F.text == "💡 Залишити пропозицію")
 async def suggestion_start(message: types.Message, state: FSMContext):
@@ -193,28 +210,6 @@ async def suggestion_process(message: types.Message, state: FSMContext):
     await bot.send_message(ADMIN_ID, f"📩 **Нова пропозиція:**\n{message.text}")
     await message.answer("✅ Дякуємо! Твою пропозицію передано адміністрації.", reply_markup=student_keyboard)
     await state.clear()
-
-# Gemini AI Помічник
-#@dp.message(F.text == "🤖 Запитати Gemini")
-#async def ai_ask(message: types.Message, state: FSMContext):
-  #  await message.answer("Напишіть ваше запитання для ШІ (наприклад: 'Поясни теорему Піфагора'):")
-  #  await state.set_state(BotStates.waiting_for_ai_question)
-
-# Оновлений обробник Gemini
-#@dp.message(BotStates.waiting_for_ai_question)
-#async def ai_process(message: types.Message, state: FSMContext):
- #   msg = await message.answer("🔎 Шукаю відповідь у мізках...")
-  #  try:
-        # Новий синтаксис запиту
-    #    response = client.models.generate_content(
-       #     model="gemini-1.5-flash", 
-       #     contents=f"Ти помічник учня школи. Відповідай коротко і зрозуміло українською мовою: {message.text}"
-       #)
-        #await msg.edit_text(response.text)
-  #  except Exception as e:
-     #   logging.error(f"AI Error: {e}")
-    #    await msg.edit_text("❌ Помилка доступу до ШІ. Перевірте API ключ у налаштуваннях Render.")
-  #  await state.clear()
 
 # --- ВІКТОРИНА ---
 @dp.message(F.text == "🎮 Вікторина")
