@@ -256,9 +256,28 @@ async def back_to_main(message: types.Message, state: FSMContext):
 
 # --- ЗАПУСК ---
 async def main():
-    await start_web_server()
+    # 1. Створюємо додаток aiohttp
+    app = web.Application()
+    app.router.add_get("/", handle)
+    
+    # 2. Налаштовуємо раннер для сервера
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    # Отримуємо порт від Render
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    
+    # 3. Запускаємо веб-сервер ТА бота одночасно
+    # asyncio.gather дозволяє обом процесам працювати паралельно
+    print(f"Сервер запущено на порту {port}")
+    
     await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    
+    await asyncio.gather(
+        site.start(),
+        dp.start_polling(bot)
+    )
 
 if __name__ == "__main__":
     try:
