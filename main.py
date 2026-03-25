@@ -209,7 +209,7 @@ async def suggestion_process(message: types.Message, state: FSMContext):
     #    response = client.models.generate_content(
        #     model="gemini-1.5-flash", 
        #     contents=f"Ти помічник учня школи. Відповідай коротко і зрозуміло українською мовою: {message.text}"
-        )
+       #)
         #await msg.edit_text(response.text)
   #  except Exception as e:
      #   logging.error(f"AI Error: {e}")
