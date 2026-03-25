@@ -3,7 +3,7 @@ import asyncio
 import os
 import sqlite3
 import random
-import google.genai as genai
+# import google.genai as genai
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -14,11 +14,11 @@ from aiohttp import web
 
 # --- 1. НАЛАШТУВАННЯ ---
 TOKEN = os.getenv("BOT_TOKEN")
-GEMINI_KEY = os.getenv("GEMINI_KEY")
+#GEMINI_KEY = os.getenv("GEMINI_KEY")
 ADMIN_ID = 8635308149 # Ваш ID
 
 # Створюємо клієнта Gemini (новий синтаксис)
-client = genai.Client(api_key=GEMINI_KEY)
+#client = genai.Client(api_key=GEMINI_KEY)
 # Налаштування ШІ Gemini
 
 
@@ -71,7 +71,7 @@ init_db()
 class BotStates(StatesGroup):
     waiting_for_suggestion = State()
     waiting_for_broadcast = State()
-    waiting_for_ai_question = State()
+    #waiting_for_ai_question = State()
 
 # --- 4. КЛАВІАТУРИ ---
 
@@ -89,8 +89,8 @@ main_keyboard = ReplyKeyboardMarkup(
 student_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔮 Передбачення оцінки"), KeyboardButton(text="🍎 Меню їдальні")],
-        [KeyboardButton(text="🤖 Запитати Gemini"), KeyboardButton(text="💡 Залишити пропозицію")],
-        [KeyboardButton(text="⬅️ Назад")]
+        #[KeyboardButton(text="🤖 Запитати Gemini")],
+        [ KeyboardButton(text="💡 Залишити пропозицію"), KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
 )
@@ -109,12 +109,12 @@ def get_quiz_kb(step):
     builder = InlineKeyboardBuilder()
     if step == 1:
         builder.row(InlineKeyboardButton(text="1. Перейду", callback_data="quiz_wrong"))
-        builder.row(InlineKeyboardButton(text="2. Видалю ✅", callback_data="quiz_step2"))
+        builder.row(InlineKeyboardButton(text="2. Видалю", callback_data="quiz_step2"))
         builder.row(InlineKeyboardButton(text="3. Перешлю", callback_data="quiz_wrong"))
     elif step == 2:
         builder.row(InlineKeyboardButton(text="1. 1234", callback_data="quiz_wrong"))
         builder.row(InlineKeyboardButton(text="2. qwerty", callback_data="quiz_wrong"))
-        builder.row(InlineKeyboardButton(text="3. Tr0n_&_4 ✅", callback_data="quiz_step3"))
+        builder.row(InlineKeyboardButton(text="3. Tr0n_&_4", callback_data="quiz_step3"))
     return builder.as_markup()
 
 # --- 5. ВЕБ-СЕРВЕР (Для хостингів типу Render/Replit) ---
@@ -195,26 +195,26 @@ async def suggestion_process(message: types.Message, state: FSMContext):
     await state.clear()
 
 # Gemini AI Помічник
-@dp.message(F.text == "🤖 Запитати Gemini")
-async def ai_ask(message: types.Message, state: FSMContext):
-    await message.answer("Напишіть ваше запитання для ШІ (наприклад: 'Поясни теорему Піфагора'):")
-    await state.set_state(BotStates.waiting_for_ai_question)
+#@dp.message(F.text == "🤖 Запитати Gemini")
+#async def ai_ask(message: types.Message, state: FSMContext):
+  #  await message.answer("Напишіть ваше запитання для ШІ (наприклад: 'Поясни теорему Піфагора'):")
+  #  await state.set_state(BotStates.waiting_for_ai_question)
 
 # Оновлений обробник Gemini
-@dp.message(BotStates.waiting_for_ai_question)
-async def ai_process(message: types.Message, state: FSMContext):
-    msg = await message.answer("🔎 Шукаю відповідь у мізках...")
-    try:
+#@dp.message(BotStates.waiting_for_ai_question)
+#async def ai_process(message: types.Message, state: FSMContext):
+ #   msg = await message.answer("🔎 Шукаю відповідь у мізках...")
+  #  try:
         # Новий синтаксис запиту
-        response = client.models.generate_content(
-            model="gemini-1.5-flash", 
-            contents=f"Ти помічник учня школи. Відповідай коротко і зрозуміло українською мовою: {message.text}"
+    #    response = client.models.generate_content(
+       #     model="gemini-1.5-flash", 
+       #     contents=f"Ти помічник учня школи. Відповідай коротко і зрозуміло українською мовою: {message.text}"
         )
-        await msg.edit_text(response.text)
-    except Exception as e:
-        logging.error(f"AI Error: {e}")
-        await msg.edit_text("❌ Помилка доступу до ШІ. Перевірте API ключ у налаштуваннях Render.")
-    await state.clear()
+        #await msg.edit_text(response.text)
+  #  except Exception as e:
+     #   logging.error(f"AI Error: {e}")
+    #    await msg.edit_text("❌ Помилка доступу до ШІ. Перевірте API ключ у налаштуваннях Render.")
+  #  await state.clear()
 
 # --- ВІКТОРИНА ---
 @dp.message(F.text == "🎮 Вікторина")
@@ -238,7 +238,16 @@ async def quiz_finish(callback: types.CallbackQuery):
 # --- ІНШЕ ---
 @dp.message(F.text == "🏫 Про школу")
 async def school_info(message: types.Message):
-    text = "<b>🏫 Гімназія №4 Павлоградської міської ради</b>\n\nвул. Сергія Корольова, 3\n<a href='https://www.sc4.dp.ua/'>Офіційний сайт</a>"
+    text = (
+        "<b>🏫 Гімназія №4 Павлоградської міської ради</b>\n\n"
+        "📍 <b>Адреса:</b>\nвул. Корольова Сергія, буд. 3, м. Павлоград,\n"
+        "Дніпропетровська область, Україна\n\n"
+        "📞 <b>Телефон:</b> (+38) 0500161966\n"
+        "📧 <b>E-mail:</b> sc_4_pv@ukr.net\n\n"
+        "🔗 <b>Корисні посилання:</b>\n"
+        "• <a href='https://www.sc4.dp.ua/'>Офіційний сайт</a>\n"
+        "• <a href='https://www.facebook.com/groups/625419974786074/'>Група у Facebook</a>"
+    )
     await message.answer(text, parse_mode="HTML", disable_web_page_preview=False)
 
 @dp.message(F.text == "❓ Допомога")
