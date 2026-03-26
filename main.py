@@ -5,10 +5,9 @@ import sqlite3
 import random
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiohttp import web
 
 # --- 1. НАЛАШТУВАННЯ ---
@@ -19,8 +18,7 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# --- 2. БАЗА ДАНИХ (SQLite) ---
-# Примітка: На Render Free Tier цей файл видаляється після кожного перезавантаження!
+# --- 2. БАЗА ДАНИХ ---
 def init_db():
     conn = sqlite3.connect("bot_data.db")
     cursor = conn.cursor()
@@ -30,40 +28,34 @@ def init_db():
     conn.close()
 
 def add_user(user_id):
-    conn = sqlite3.connect("bot_data.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
+        conn.commit()
 
 def get_all_users():
-    conn = sqlite3.connect("bot_data.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM users")
-    users = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return users
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id FROM users")
+        return [row[0] for row in cursor.fetchall()]
 
 def save_setting(key, value):
-    conn = sqlite3.connect("bot_data.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+        conn.commit()
 
 def get_setting(key):
-    conn = sqlite3.connect("bot_data.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+        result = cursor.fetchone()
+        return result[0] if result else None
 
 init_db()
 
 # --- 3. СТАНИ (FSM) ---
 class BotStates(StatesGroup):
-    waiting_for_suggestion = State()
     waiting_for_broadcast = State()
     waiting_for_schedule_photo = State()
     waiting_for_menu_photo = State()
@@ -72,8 +64,7 @@ class BotStates(StatesGroup):
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔔 Розклад 🔔"), KeyboardButton(text="🎓 Центр учня")],
-        [KeyboardButton(text="🏫 Про школу"), KeyboardButton(text="🎮 Вікторина")],
-        [KeyboardButton(text="❓ Допомога")]
+        [KeyboardButton(text="🏫 Про школу"), KeyboardButton(text="❓ Допомога")]
     ],
     resize_keyboard=True
 )
@@ -81,7 +72,7 @@ main_keyboard = ReplyKeyboardMarkup(
 student_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔮 Передбачення оцінки"), KeyboardButton(text="🍎 Меню їдальні")],
-        [KeyboardButton(text="💡 Залишити пропозицію"), KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
 )
@@ -94,19 +85,18 @@ help_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# --- 5. ВЕБ-СЕРВЕР (Щоб Render не видавав помилку No open ports) ---
+# --- 5. ВЕБ-СЕРВЕР ---
 async def handle(request):
-    return web.Response(text="Bot is running!", status=200)
+    return web.Response(text="Bot is active!", status=200)
 
 async def run_webserver():
     app = web.Application()
     app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.getenv("PORT", 8080))  # Render передає порт автоматично
+    port = int(os.getenv("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    logging.info(f"Web server started on port {port}")
 
 # --- 6. ОБРОБНИКИ АДМІНІСТРАТОРА ---
 @dp.message(Command("set_schedule"), F.from_user.id == ADMIN_ID)
@@ -121,21 +111,9 @@ async def process_schedule_photo(message: types.Message, state: FSMContext):
     await message.answer("✅ Розклад успішно оновлено!")
     await state.clear()
 
-@dp.message(Command("set_menu"), F.from_user.id == ADMIN_ID)
-async def set_menu_start(message: types.Message, state: FSMContext):
-    await message.answer("📸 Відправте фото МЕНЮ ЇДАЛЬНІ:")
-    await state.set_state(BotStates.waiting_for_menu_photo)
-
-@dp.message(BotStates.waiting_for_menu_photo, F.photo)
-async def process_menu_photo(message: types.Message, state: FSMContext):
-    photo_id = message.photo[-1].file_id
-    save_setting("menu_id", photo_id)
-    await message.answer("✅ Меню оновлено!")
-    await state.clear()
-
 @dp.message(Command("broadcast"), F.from_user.id == ADMIN_ID)
 async def broadcast_start(message: types.Message, state: FSMContext):
-    await message.answer("Напишіть текст оголошення:")
+    await message.answer("Напишіть текст оголошення для всіх учнів:")
     await state.set_state(BotStates.waiting_for_broadcast)
 
 @dp.message(BotStates.waiting_for_broadcast)
@@ -146,15 +124,14 @@ async def broadcast_send(message: types.Message, state: FSMContext):
         try:
             await bot.send_message(user_id, f"📢 **ОГОЛОШЕННЯ:**\n\n{message.text}", parse_mode="Markdown")
             count += 1
-        except Exception: 
+        except Exception:
             continue
     await message.answer(f"✅ Розсилка завершена для {count} учнів.")
     await state.clear()
 
 # --- 7. ОСНОВНІ ОБРОБНИКИ ---
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message, state: FSMContext = None):
-    if state: await state.clear()
+async def cmd_start(message: types.Message):
     add_user(message.from_user.id)
     await message.answer(f"Привіт, {message.from_user.first_name}! Вітаємо у боті Гімназії №4 🏫", reply_markup=main_keyboard)
 
@@ -164,7 +141,7 @@ async def send_schedule(message: types.Message):
     if photo_id:
         await message.answer_photo(photo=photo_id, caption="📅 Актуальний розклад")
     else:
-        await message.answer("❌ Розклад не завантажений адміністратором.")
+        await message.answer("❌ Розклад ще не завантажений.")
 
 @dp.message(F.text == "🎓 Центр учня")
 async def student_center(message: types.Message):
@@ -172,57 +149,15 @@ async def student_center(message: types.Message):
 
 @dp.message(F.text == "🔮 Передбачення оцінки")
 async def get_prediction(message: types.Message):
-    res = random.choice([10, 11, 12, 9, 8, "12 з зірочкою!", "Відпочинок!"])
+    res = random.choice([8, 9, 10, 11, 12, "12!", "Відпочинок!"])
     await message.answer(f"🔮 Сьогодні твоя оцінка: **{res}**", parse_mode="Markdown")
 
-@dp.message(F.text == "🍎 Меню їдальні")
-async def school_menu(message: types.Message):
-    photo_id = get_setting("menu_id")
-    if photo_id:
-        await message.answer_photo(photo=photo_id, caption="🍴 Сьогодні в меню")
-    else:
-        await message.answer("🍴 Меню ще не завантажене.")
-
-@dp.message(F.text == "🏫 Про школу")
-async def school_info(message: types.Message):
-    text = (
-        "<b>🏫 Гімназія №4 Павлоградської міської ради</b>\n\n"
-        "📍 <b>Адреса:</b> вул. Корольова Сергія, 3\n"
-        "📞 <b>Телефон:</b> (+38) 0500161966\n"
-        "🔗 <a href='https://www.sc4.dp.ua/'>Офіційний сайт</a>"
-    )
-    await message.answer(text, parse_mode="HTML", disable_web_page_preview=True)
-
-# --- 8. FAQ ТА ДОПОМОГА ---
-@dp.message(F.text == "❓ Допомога")
-async def help_menu(message: types.Message):
-    await message.answer("Оберіть розділ:", reply_markup=help_keyboard)
-
-@dp.message(F.text == "📝 FAQ")
-async def faq_info(message: types.Message):
-    faq_text = (
-        "<b>📌 Відповіді на питання:</b>\n\n"
-        "⏰ <b>Розклад дзвінків:</b>\n"
-        "1 урок: 08:00 - 08:45\n2 урок: 08:55 - 09:40\n3 урок: 09:55 - 10:40\n\n"
-        "🛡 <b>Безпека:</b>\n"
-        "Під час повітряної тривоги учні слідують в укриття.\n\n"
-        "🔐 <b>Щоденник:</b>\n"
-        "Логін до E-Journal видає класний керівник."
-    )
-    await message.answer(faq_text, parse_mode="HTML")
-
-@dp.message(F.text == "🔑 Відновити пароль")
-async def reset_password(message: types.Message):
-    await message.answer("🔑 Для відновлення доступу зверніться до техпідтримки школи або свого вчителя.")
-
 @dp.message(F.text == "⬅️ Назад")
-async def back_to_main(message: types.Message, state: FSMContext):
-    await state.clear()
-    await message.answer("Повернення в головне меню", reply_markup=main_keyboard)
+async def back_to_main(message: types.Message):
+    await message.answer("Головне меню", reply_markup=main_keyboard)
 
-# --- 9. ЗАПУСК ---
+# --- 8. ЗАПУСК ---
 async def main():
-    # Запускаємо сервер і бота одночасно
     await asyncio.gather(
         run_webserver(),
         dp.start_polling(bot)
@@ -233,74 +168,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logging.info("Bot stopped")
-    await message.answer(f"✅ Розсилка завершена для {count} учнів.")
-    await state.clear()
-
-# --- 7. ОСНОВНІ ОБРОБНИКИ ---
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message, state: FSMContext = None):
-    if state: await state.clear()
-    add_user(message.from_user.id)
-    await message.answer(f"Привіт, {message.from_user.first_name}! Вітаємо у боті Гімназії №4 🏫", reply_markup=main_keyboard)
-
-@dp.message(F.text == "🔔 Розклад 🔔")
-async def send_schedule(message: types.Message):
-    photo_id = get_setting("schedule_id")
-    if photo_id:
-        await message.answer_photo(photo=photo_id, caption="📅 Актуальний розклад")
-    else:
-        await message.answer("❌ Розклад не завантажений адміністратором.")
-
-@dp.message(F.text == "🎓 Центр учня")
-async def student_center(message: types.Message):
-    await message.answer("🎓 Учнівський хаб:", reply_markup=student_keyboard)
-
-@dp.message(F.text == "🔮 Передбачення оцінки")
-async def get_prediction(message: types.Message):
-    res = random.choice([10, 11, 12, 9, 8, "12 з зірочкою!", "Відпочинок!"])
-    await message.answer(f"🔮 Сьогодні твоя оцінка: **{res}**", parse_mode="Markdown")
-
-@dp.message(F.text == "🍎 Меню їдальні")
-async def school_menu(message: types.Message):
-    photo_id = get_setting("menu_id")
-    if photo_id:
-        await message.answer_photo(photo=photo_id, caption="🍴 Сьогодні в меню")
-    else:
-        await message.answer("🍴 Меню ще не завантажене.")
-
-@dp.message(F.text == "🏫 Про школу")
-async def school_info(message: types.Message):
-    text = (
-        "<b>🏫 Гімназія №4 Павлоградської міської ради</b>\n\n"
-        "📍 <b>Адреса:</b> вул. Корольова Сергія, 3\n"
-        "📞 <b>Телефон:</b> (+38) 0500161966\n"
-        "🔗 <a href='https://www.sc4.dp.ua/'>Офіційний сайт</a>"
-    )
-    await message.answer(text, parse_mode="HTML")
-
-# --- 8. FAQ ТА ДОПОМОГА ---
-@dp.message(F.text == "❓ Допомога")
-async def help_menu(message: types.Message):
-    await message.answer("Оберіть розділ:", reply_markup=help_keyboard)
-
-@dp.message(F.text == "📝 FAQ")
-async def faq_info(message: types.Message):
-    faq_text = (
-        "<b>📌 Відповіді на питання:</b>\n\n"
-        "⏰ <b>Розклад дзвінків:</b>\n"
-        "1 урок: 08:00 - 08:45\n2 урок: 08:55 - 09:40\n3 урок: 09:55 - 10:40\n\n"
-        "🛡 <b>Безпека:</b>\n"
-        "Під час повітряної тривоги учні слідують в укриття.\n\n"
-        "🔐 <b>Щоденник:</b>\n"
-        "Логін до E-Journal видає класний керівник."
-    )
-    await message.answer(faq_text, parse_mode="HTML")
-
-@dp.message(F.text == "🔑 Відновити пароль")
-async def reset_password(message: types.Message):
-    await message.answer("🔑 Для відновлення доступу зверніться до техпідтримки школи або свого вчителя.")
-
-@dp.message(F.text == "⬅️ Назад")
-async def back_to_main(message: types.Message, state: FSMContext):
-    await state.clear()
-    await message.answer("Повернення в меню", reply_markup=main_keyboard)
