@@ -58,7 +58,7 @@ init_db()
 class BotStates(StatesGroup):
     waiting_for_broadcast = State()
     waiting_for_schedule_photo = State()
-    waiting_for_menu_photo = State()
+    waiting_for_menu_photo = State() # ДОДАНО: стан для завантаження меню
 
 # --- 4. КЛАВІАТУРИ ---
 main_keyboard = ReplyKeyboardMarkup(
@@ -99,6 +99,7 @@ async def run_webserver():
     await site.start()
 
 # --- 6. ОБРОБНИКИ АДМІНІСТРАТОРА ---
+
 @dp.message(Command("set_schedule"), F.from_user.id == ADMIN_ID)
 async def set_schedule_start(message: types.Message, state: FSMContext):
     await message.answer("📸 Відправте фото НОВОГО РОЗКЛАДУ:")
@@ -109,6 +110,19 @@ async def process_schedule_photo(message: types.Message, state: FSMContext):
     photo_id = message.photo[-1].file_id
     save_setting("schedule_id", photo_id)
     await message.answer("✅ Розклад успішно оновлено!")
+    await state.clear()
+
+# ДОДАНО: обробник команди для завантаження меню (згідно з вашою нотаткою)
+@dp.message(Command("set_menu"), F.from_user.id == ADMIN_ID)
+async def set_menu_start(message: types.Message, state: FSMContext):
+    await message.answer("📸 Відправте фото НОВОГО МЕНЮ:")
+    await state.set_state(BotStates.waiting_for_menu_photo)
+
+@dp.message(BotStates.waiting_for_menu_photo, F.photo)
+async def process_menu_photo(message: types.Message, state: FSMContext):
+    photo_id = message.photo[-1].file_id
+    save_setting("menu_id", photo_id)
+    await message.answer("✅ Меню їдальні успішно оновлено!")
     await state.clear()
 
 @dp.message(Command("broadcast"), F.from_user.id == ADMIN_ID)
@@ -133,7 +147,7 @@ async def broadcast_send(message: types.Message, state: FSMContext):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
-    await state.clear() # Скидаємо будь-які стани при старті
+    await state.clear() 
     add_user(message.from_user.id)
     await message.answer(f"Привіт, {message.from_user.first_name}! Вітаємо у боті Гімназії №4 🏫", reply_markup=main_keyboard)
 
@@ -148,6 +162,17 @@ async def send_schedule(message: types.Message):
 @dp.message(F.text == "🎓 Центр учня")
 async def student_center(message: types.Message):
     await message.answer("🎓 Учнівський хаб:", reply_markup=student_keyboard)
+
+# ДОДАНО: Логіка передбачення оцінки (згідно з вашою нотаткою)
+@dp.message(F.text == "🔮 Передбачення оцінки")
+async def predict_grade(message: types.Message):
+    grade = random.randint(1, 12)
+    predictions = [
+        f"🔮 Твоє сьогоднішнє число успіху: {grade}!",
+        f"📚 Зірки кажуть, сьогодні в журналі з'явиться: {grade}!",
+        f"✨ Твоє передбачення на сьогодні: оцінка {grade}."
+    ]
+    await message.answer(random.choice(predictions))
 
 @dp.message(F.text == "🍎 Меню їдальні")
 async def school_menu(message: types.Message):
@@ -180,9 +205,19 @@ async def faq_info(message: types.Message):
     )
     await message.answer(faq_text, parse_mode="HTML")
 
+# ДОДАНО: Відновлення пароля (текст із фото)
+@dp.message(F.text == "🔑 Відновити пароль")
+async def recover_password(message: types.Message):
+    info_text = (
+        "🔑 **Відновлення пароля:**\n\n"
+        "Для відновлення доступу необхідно звернутися до свого **класного керівника** "
+        "або підійти в **кабінет №27**."
+    )
+    await message.answer(info_text, parse_mode="Markdown")
+
 @dp.message(F.text == "⬅️ Назад")
 async def back_to_main(message: types.Message, state: FSMContext):
-    await state.clear() # ОБОВ'ЯЗКОВО скидаємо стан, щоб кнопки знову працювали
+    await state.clear() 
     await message.answer("Повернення в головне меню", reply_markup=main_keyboard)
         
 # --- 8. ЗАПУСК ---
