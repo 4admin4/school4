@@ -130,8 +130,10 @@ async def broadcast_send(message: types.Message, state: FSMContext):
     await state.clear()
 
 # --- 7. ОСНОВНІ ОБРОБНИКИ ---
+
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear() # Скидаємо будь-які стани при старті
     add_user(message.from_user.id)
     await message.answer(f"Привіт, {message.from_user.first_name}! Вітаємо у боті Гімназії №4 🏫", reply_markup=main_keyboard)
 
@@ -141,21 +143,48 @@ async def send_schedule(message: types.Message):
     if photo_id:
         await message.answer_photo(photo=photo_id, caption="📅 Актуальний розклад")
     else:
-        await message.answer("❌ Розклад ще не завантажений.")
+        await message.answer("❌ Розклад ще не завантажений адміністратором.")
 
 @dp.message(F.text == "🎓 Центр учня")
 async def student_center(message: types.Message):
     await message.answer("🎓 Учнівський хаб:", reply_markup=student_keyboard)
 
-@dp.message(F.text == "🔮 Передбачення оцінки")
-async def get_prediction(message: types.Message):
-    res = random.choice([8, 9, 10, 11, 12, "12!", "Відпочинок!"])
-    await message.answer(f"🔮 Сьогодні твоя оцінка: **{res}**", parse_mode="Markdown")
+@dp.message(F.text == "🍎 Меню їдальні")
+async def school_menu(message: types.Message):
+    photo_id = get_setting("menu_id")
+    if photo_id:
+        await message.answer_photo(photo=photo_id, caption="🍴 Сьогодні в меню")
+    else:
+        await message.answer("🍴 Меню ще не завантажене.")
+
+@dp.message(F.text == "🏫 Про школу")
+async def school_info(message: types.Message):
+    text = (
+        "<b>🏫 Гімназія №4 Павлоградської міської ради</b>\n\n"
+        "📍 <b>Адреса:</b> вул. Корольова Сергія, 3\n"
+        "📞 <b>Телефон:</b> (+38) 0500161966\n"
+        "🔗 <a href='https://www.sc4.dp.ua/'>Офіційний сайт</a>"
+    )
+    await message.answer(text, parse_mode="HTML", disable_web_page_preview=True)
+
+@dp.message(F.text == "❓ Допомога")
+async def help_menu(message: types.Message):
+    await message.answer("Оберіть розділ допомоги:", reply_markup=help_keyboard)
+
+@dp.message(F.text == "📝 FAQ")
+async def faq_info(message: types.Message):
+    faq_text = (
+        "<b>📌 FAQ:</b>\n"
+        "⏰ Дзвінки: 1-й урок з 08:00\n"
+        "🛡 Безпека: під час тривоги йдемо в укриття."
+    )
+    await message.answer(faq_text, parse_mode="HTML")
 
 @dp.message(F.text == "⬅️ Назад")
-async def back_to_main(message: types.Message):
-    await message.answer("Головне меню", reply_markup=main_keyboard)
-
+async def back_to_main(message: types.Message, state: FSMContext):
+    await state.clear() # ОБОВ'ЯЗКОВО скидаємо стан, щоб кнопки знову працювали
+    await message.answer("Повернення в головне меню", reply_markup=main_keyboard)
+        
 # --- 8. ЗАПУСК ---
 async def main():
     await asyncio.gather(
