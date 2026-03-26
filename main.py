@@ -218,4 +218,4 @@ async def reset_password(message: types.Message):
 @dp.message(F.text == "⬅️ Назад")
 async def back_to_main(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("Повернення в меню", reply_markup=main_
+    await message.answer("Повернення в меню", reply_markup=main_keyboard)
